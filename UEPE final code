@@ -1,0 +1,667 @@
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <string>
+#include <algorithm>
+#include <limits>
+#include <cstdlib>
+
+using namespace std;
+
+const long long INF = numeric_limits<long long>::max() / 4;
+const int PREEMPTION_LIMIT = 50;
+
+// ROAD STRUCTURE
+struct Road {
+    int from, to, cost;
+    bool blocked;
+};
+
+// EMERGENCY VEHICLE REQUEST
+struct EmergencyRequest {
+    string vehicleName;
+    int vehicleType;
+    int urgency;
+    int priorityScore;
+    int start;
+    int destination;
+    int requestNumber;
+};
+
+// HIGHER PRIORITY REQUESTS ARE PROCESSED FIRST
+struct HigherPriorityFirst {
+    bool operator()(const EmergencyRequest &a,
+                    const EmergencyRequest &b) const {
+        if (a.priorityScore == b.priorityScore)
+            return a.requestNumber > b.requestNumber;
+
+        return a.priorityScore < b.priorityScore;
+    }
+};
+
+// SAFE INTEGER INPUT
+int readInt(const string &prompt) {
+    int value;
+
+    while (true) {
+        cout << prompt;
+
+        if (cin >> value)
+            return value;
+
+        if (cin.eof()) {
+            cout << "\nInput ended. Exiting safely.\n";
+            exit(0);
+        }
+
+        cout << "Invalid input. Enter a whole number.\n";
+
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
+}
+
+// VEHICLE TYPE NAME
+string vehicleTypeName(int type) {
+    if (type == 1)
+        return "Ambulance";
+
+    if (type == 2)
+        return "Fire Brigade";
+
+    return "Police Vehicle";
+}
+
+// SIGNAL DIRECTION NAME
+string directionName(int direction) {
+    if (direction == 1) return "North";
+    if (direction == 2) return "South";
+    if (direction == 3) return "East";
+
+    return "West";
+}
+
+// PRIORITY SCORE CALCULATION
+int calculatePriorityScore(int vehicleType, int urgency) {
+    int bonus;
+
+    if (vehicleType == 1)
+        bonus = 30;
+    else if (vehicleType == 2)
+        bonus = 20;
+    else
+        bonus = 10;
+
+    return urgency * 10 + bonus;
+}
+
+// DISPLAY ALL ROADS
+void displayRoads(const vector<Road> &roads) {
+    cout << "\n========== ROAD NETWORK ==========\n";
+
+    if (roads.empty()) {
+        cout << "No roads have been added.\n";
+        return;
+    }
+
+    for (size_t i = 0; i < roads.size(); i++) {
+        cout << "Index " << i << ": "
+             << roads[i].from << " <-> "
+             << roads[i].to
+             << " | Cost: " << roads[i].cost
+             << " | Status: "
+             << (roads[i].blocked ? "BLOCKED" : "OPEN")
+             << '\n';
+    }
+}
+
+// DIJKSTRA SHORTEST-PATH ROUTING
+vector<int> findRoute(
+    int nodes,
+    const vector<Road> &roads,
+    int start,
+    int destination,
+    long long &totalCost
+) {
+    totalCost = -1;
+
+    if (start < 0 || start >= nodes ||
+        destination < 0 || destination >= nodes)
+        return {};
+
+    vector<long long> distance(nodes, INF);
+    vector<int> previous(nodes, -1);
+
+    priority_queue<
+        pair<long long, int>,
+        vector<pair<long long, int>>,
+        greater<pair<long long, int>>
+    > waiting;
+
+    distance[start] = 0;
+    waiting.push({0, start});
+
+    while (!waiting.empty()) {
+        long long currentCost = waiting.top().first;
+        int current = waiting.top().second;
+
+        waiting.pop();
+
+        if (currentCost != distance[current])
+            continue;
+
+        if (current == destination)
+            break;
+
+        for (size_t i = 0; i < roads.size(); i++) {
+            const Road &road = roads[i];
+
+            if (road.blocked)
+                continue;
+
+            int next = -1;
+
+            if (road.from == current)
+                next = road.to;
+            else if (road.to == current)
+                next = road.from;
+
+            if (next == -1)
+                continue;
+
+            long long newCost = distance[current] + road.cost;
+
+            if (newCost < distance[next]) {
+                distance[next] = newCost;
+                previous[next] = current;
+
+                waiting.push({newCost, next});
+            }
+        }
+    }
+
+    if (distance[destination] == INF)
+        return {};
+
+    vector<int> route;
+
+    for (int point = destination;
+         point != -1;
+         point = previous[point]) {
+        route.push_back(point);
+    }
+
+    reverse(route.begin(), route.end());
+
+    totalCost = distance[destination];
+
+    return route;
+}
+
+// DISPLAY ROUTE
+void displayRoute(
+    const vector<int> &route,
+    long long cost
+) {
+    if (route.empty()) {
+        cout << "No route is currently available.\n";
+        return;
+    }
+
+    cout << "Route: ";
+
+    for (size_t i = 0; i < route.size(); i++) {
+        cout << route[i];
+
+        if (i + 1 < route.size())
+            cout << " -> ";
+    }
+
+    cout << "\nTotal route cost: " << cost << '\n';
+}
+
+// SIMULATED TRAFFIC SIGNAL PRE-EMPTION
+void simulateSignal(int priorityScore) {
+    cout << "\n========== PRE-EMPTION DECISION ==========\n";
+    cout << "Priority score: " << priorityScore << '\n';
+
+    if (priorityScore < PREEMPTION_LIMIT) {
+        cout << "Priority threshold not reached.\n";
+        cout << "Normal signal sequence continues.\n";
+        return;
+    }
+
+    cout << "Pre-emption eligible in this simulation.\n";
+    cout << "1. North\n";
+    cout << "2. South\n";
+    cout << "3. East\n";
+    cout << "4. West\n";
+
+    int direction = readInt("Enter emergency direction: ");
+
+    if (direction < 1 || direction > 4) {
+        cout << "Invalid direction. No signal change simulated.\n";
+        return;
+    }
+
+    cout << "Emergency direction: "
+         << directionName(direction) << '\n';
+
+    cout << "Simulated signal: GREEN\n";
+    cout << "Other directions: RED\n";
+    cout << "No real traffic signals are controlled.\n";
+}
+
+// UPDATE ROADS AND RECALCULATE ROUTE
+bool updateRoadsAndReroute(
+    int nodes,
+    vector<Road> &roads,
+    int currentLocation,
+    int destination,
+    vector<int> &currentRoute,
+    long long &routeCost
+) {
+    cout << "\n========== ROAD UPDATE MENU ==========\n";
+    cout << "1. Change road cost (simulate congestion)\n";
+    cout << "2. Block a road\n";
+    cout << "3. Reopen a road\n";
+    cout << "4. Display roads\n";
+    cout << "0. Return\n";
+
+    cout << "Current location: " << currentLocation << '\n';
+    cout << "Fixed destination: " << destination << '\n';
+
+    int choice = readInt("Enter choice: ");
+
+    if (choice == 0)
+        return true;
+
+    if (choice == 4) {
+        displayRoads(roads);
+        return true;
+    }
+
+    if (choice < 1 || choice > 3) {
+        cout << "Invalid choice.\n";
+        return true;
+    }
+
+    if (roads.empty()) {
+        cout << "No roads are available to update.\n";
+        return true;
+    }
+
+    displayRoads(roads);
+
+    int index = readInt("Enter road index: ");
+
+    if (index < 0 || index >= static_cast<int>(roads.size())) {
+        cout << "Invalid road index.\n";
+        return true;
+    }
+
+    if (choice == 1) {
+        int newCost = readInt("Enter new cost (> 0): ");
+
+        if (newCost <= 0) {
+            cout << "Cost must be greater than zero.\n";
+            return true;
+        }
+
+        roads[index].cost = newCost;
+        cout << "Road cost updated.\n";
+    }
+    else if (choice == 2) {
+        if (roads[index].blocked) {
+            cout << "Road is already blocked.\n";
+            return true;
+        }
+
+        roads[index].blocked = true;
+        cout << "Road blocked.\n";
+    }
+    else {
+        if (!roads[index].blocked) {
+            cout << "Road is already open.\n";
+            return true;
+        }
+
+        roads[index].blocked = false;
+        cout << "Road reopened.\n";
+    }
+
+    long long newCost;
+
+    vector<int> newRoute = findRoute(
+        nodes, roads, currentLocation,
+        destination, newCost
+    );
+
+    if (newRoute.empty()) {
+        currentRoute.clear();
+        routeCost = -1;
+
+        cout << "No route is available from intersection "
+             << currentLocation << " to " << destination << ".\n";
+
+        cout << "Vehicle remains at intersection "
+             << currentLocation << ".\n";
+
+        cout << "Reopen a road or reduce congestion, then retry.\n";
+
+        return false;
+    }
+
+    bool changed = (newRoute != currentRoute);
+
+    currentRoute = newRoute;
+    routeCost = newCost;
+
+    if (changed) {
+        cout << "Route recalculated from current location "
+             << currentLocation
+             << " to the same destination "
+             << destination << ".\n";
+    }
+    else {
+        cout << "Current route remains valid.\n";
+    }
+
+    displayRoute(currentRoute, routeCost);
+
+    return true;
+}
+
+// BUILT-IN ROUTING TESTS
+void runRouteTest() {
+    cout << "\n========== BUILT-IN ROUTE TESTS ==========\n";
+
+    vector<Road> testRoads;
+
+    testRoads.push_back({0, 1, 2, false});
+    testRoads.push_back({1, 2, 3, false});
+    testRoads.push_back({2, 3, 4, false});
+    testRoads.push_back({0, 3, 20, false});
+
+    long long cost;
+
+    vector<int> route = findRoute(
+        4, testRoads, 0, 3, cost
+    );
+
+    bool basic = !route.empty() && cost == 9;
+
+    cout << "Test 1 - Shortest route cost 9: "
+         << (basic ? "PASS" : "FAIL") << '\n';
+
+    testRoads[1].blocked = true;
+
+    route = findRoute(4, testRoads, 0, 3, cost);
+
+    bool alternate = !route.empty() && cost == 20;
+
+    cout << "Test 2 - Alternate route after closure: "
+         << (alternate ? "PASS" : "FAIL") << '\n';
+
+    testRoads[3].blocked = true;
+
+    route = findRoute(4, testRoads, 0, 3, cost);
+
+    bool unavailable = route.empty() && cost == -1;
+
+    cout << "Test 3 - Detects disconnected route: "
+         << (unavailable ? "PASS" : "FAIL") << '\n';
+
+    testRoads[1].blocked = false;
+    testRoads[3].blocked = false;
+
+    route = findRoute(4, testRoads, 2, 3, cost);
+
+    bool currentPosition =
+        !route.empty() &&
+        route.front() == 2 &&
+        route.back() == 3;
+
+    cout << "Test 4 - Current location and destination preserved: "
+         << (currentPosition ? "PASS" : "FAIL") << '\n';
+}
+
+// MAIN PROGRAM
+int main() {
+    cout << "============================================\n";
+    cout << " URBAN EMERGENCY PRE-EMPTION ENGINE (UEPE)\n";
+    cout << "============================================\n";
+    cout << "Educational simulation only.\n";
+    cout << "No live traffic data or real signal control.\n";
+
+    int nodes;
+
+    do {
+        nodes = readInt(
+            "\nEnter number of intersections (1-100): "
+        );
+
+        if (nodes < 1 || nodes > 100)
+            cout << "Enter a value from 1 to 100.\n";
+
+    } while (nodes < 1 || nodes > 100);
+
+    int roadCount;
+
+    do {
+        roadCount = readInt("Enter number of roads (0-10000): ");
+
+        if (roadCount < 0 || roadCount > 10000)
+            cout << "Enter a value from 0 to 10000.\n";
+
+    } while (roadCount < 0 || roadCount > 10000);
+
+    vector<Road> roads;
+
+    for (int i = 0; i < roadCount; i++) {
+        cout << "\nEnter road " << i + 1 << " details:\n";
+
+        int from = readInt("Start intersection: ");
+        int to = readInt("End intersection: ");
+        int cost = readInt("Road cost (> 0): ");
+
+        if (from < 0 || from >= nodes ||
+            to < 0 || to >= nodes ||
+            from == to || cost <= 0) {
+
+            cout << "Invalid road. Enter its details again.\n";
+            i--;
+            continue;
+        }
+
+        roads.push_back({from, to, cost, false});
+    }
+
+    cout << "\n========== ROAD NETWORK CREATED ==========\n";
+    displayRoads(roads);
+
+    int requestCount;
+
+    do {
+        requestCount = readInt(
+            "\nHow many emergency requests? "
+        );
+
+        if (requestCount < 0 || requestCount > 10000)
+            cout << "Enter a value from 0 to 10000.\n";
+
+    } while (requestCount < 0 || requestCount > 10000);
+
+    priority_queue<
+        EmergencyRequest,
+        vector<EmergencyRequest>,
+        HigherPriorityFirst
+    > requests;
+
+    for (int i = 0; i < requestCount; i++) {
+        EmergencyRequest request;
+        request.requestNumber = i;
+
+        cout << "\n========== EMERGENCY REQUEST "
+             << i + 1 << " ==========\n";
+
+        request.vehicleType = readInt(
+            "Vehicle type (1-Ambulance, 2-Fire, 3-Police): "
+        );
+
+        request.urgency = readInt("Urgency (1-5): ");
+
+        request.start = readInt(
+            "Current intersection (0-" +
+            to_string(nodes - 1) + "): "
+        );
+
+        request.destination = readInt(
+            "Destination intersection (0-" +
+            to_string(nodes - 1) + "): "
+        );
+
+        if (request.vehicleType < 1 ||
+            request.vehicleType > 3 ||
+            request.urgency < 1 ||
+            request.urgency > 5 ||
+            request.start < 0 ||
+            request.start >= nodes ||
+            request.destination < 0 ||
+            request.destination >= nodes) {
+
+            cout << "Invalid request details. Try again.\n";
+            i--;
+            continue;
+        }
+
+        request.vehicleName =
+            vehicleTypeName(request.vehicleType);
+
+        request.priorityScore = calculatePriorityScore(
+            request.vehicleType, request.urgency
+        );
+
+        cout << "Priority score: "
+             << request.priorityScore << '\n';
+
+        requests.push(request);
+    }
+
+    cout << "\n============================================\n";
+    cout << " PROCESSING REQUESTS BY PRIORITY\n";
+    cout << "============================================\n";
+
+    while (!requests.empty()) {
+        EmergencyRequest request = requests.top();
+        requests.pop();
+
+        cout << "\n--------------------------------------------\n";
+        cout << "Vehicle: " << request.vehicleName << '\n';
+        cout << "Priority score: " << request.priorityScore << '\n';
+        cout << "Start: " << request.start
+             << " | Destination: " << request.destination << '\n';
+
+        int currentLocation = request.start;
+        long long routeCost;
+
+        vector<int> currentRoute = findRoute(
+            nodes, roads, currentLocation,
+            request.destination, routeCost
+        );
+
+        displayRoute(currentRoute, routeCost);
+
+        if (currentLocation == request.destination) {
+            cout << "Vehicle is already at its destination.\n";
+            continue;
+        }
+
+        if (!currentRoute.empty()) {
+            simulateSignal(request.priorityScore);
+        }
+        else {
+            cout << "No route yet. Update roads to recover.\n";
+            cout << "The vehicle will not move until a route exists.\n";
+        }
+
+        bool endedByUser = false;
+
+        while (currentLocation != request.destination &&
+               !endedByUser) {
+
+            cout << "\n========== VEHICLE MENU ==========\n";
+            cout << "Current location: " << currentLocation << '\n';
+            cout << "Fixed destination: " << request.destination << '\n';
+            cout << "1. Move to next intersection\n";
+            cout << "2. Update traffic / block / reopen road\n";
+            cout << "3. Display roads and current route\n";
+            cout << "4. Finish this vehicle's simulation\n";
+
+            int choice = readInt("Enter choice: ");
+
+            if (choice == 1) {
+                if (currentRoute.size() < 2) {
+                    cout << "No route available. Update roads first.\n";
+                    continue;
+                }
+
+                currentLocation = currentRoute[1];
+
+                cout << "Vehicle moved to intersection "
+                     << currentLocation << ".\n";
+
+                currentRoute = findRoute(
+                    nodes, roads, currentLocation,
+                    request.destination, routeCost
+                );
+
+                displayRoute(currentRoute, routeCost);
+
+                if (currentLocation != request.destination &&
+                    currentRoute.empty()) {
+                    cout << "No remaining route. Vehicle waits here "
+                         << "until a road is restored.\n";
+                }
+            }
+            else if (choice == 2) {
+                bool wasUnavailable = currentRoute.empty();
+
+                updateRoadsAndReroute(
+                    nodes, roads, currentLocation,
+                    request.destination, currentRoute, routeCost
+                );
+
+                if (wasUnavailable && !currentRoute.empty()) {
+                    cout << "Route recovery successful.\n";
+                    cout << "Current location and destination preserved.\n";
+                    simulateSignal(request.priorityScore);
+                }
+            }
+            else if (choice == 3) {
+                displayRoads(roads);
+                displayRoute(currentRoute, routeCost);
+            }
+            else if (choice == 4) {
+                cout << "Vehicle simulation ended by user.\n";
+                endedByUser = true;
+            }
+            else {
+                cout << "Invalid choice. Select 1-4.\n";
+            }
+        }
+
+        if (currentLocation == request.destination)
+            cout << request.vehicleName
+                 << " reached its destination.\n";
+    }
+
+    cout << "\nAll emergency requests processed.\n";
+
+    runRouteTest();
+
+    cout << "\nUEPE simulation finished.\n";
+
+    return 0;
+}
