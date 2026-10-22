@@ -428,11 +428,7 @@ void runRouteTest() {
 
 // MAIN PROGRAM
 int main() {
-    cout << "============================================\n";
-    cout << " URBAN EMERGENCY PRE-EMPTION ENGINE (UEPE)\n";
-    cout << "============================================\n";
-    cout << "Educational simulation only.\n";
-    cout << "No live traffic data or real signal control.\n";
+    
 
     int nodes;
 
